@@ -1,0 +1,1003 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Вытряхни правки — RGBY</title>
+<meta name="description" content="Мини-игра от RGBY: высыпь все правки на стол и возвращайся к работе.">
+<meta name="theme-color" content="#141414">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RGBY">
+<meta property="og:title" content="Вытряхни правки">
+<meta property="og:description" content="«Теперь хорошо, но…» Высыпь все правки на стол и возвращайся к работе. Сколько секунд у тебя?">
+<meta property="og:url" content="https://rgby.ru/pravki">
+<meta property="og:image" content="https://rgby.ru/pravki/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#141414; --floor:#0E0E0E; --ink:#FFFFFF; --mute:#8A8A8A; --dim:#5A5A5A; --rule:#3A3A3A;
+  --lime:#C6FF00;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;overflow:hidden;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;
+  -webkit-touch-callout:none;touch-action:manipulation}
+canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;cursor:grab;display:block}
+canvas.grabbing{cursor:grabbing}
+.hud{position:fixed;pointer-events:none;z-index:2}
+a,button{pointer-events:auto}
+
+/* шапка */
+.top{top:max(18px,env(safe-area-inset-top));left:20px;right:20px;display:flex;align-items:flex-start;gap:28px}
+.logo{height:22px;display:block}
+.dirs{font-size:7.5pt;line-height:1.45;color:var(--dim)}
+.dirs b{color:var(--ink);font-weight:600}
+.btns{margin-left:auto;display:flex;gap:6px}
+.ib{width:36px;height:36px;border:1px solid var(--rule);border-radius:50%;background:transparent;color:var(--mute);
+  display:grid;place-items:center;cursor:pointer;padding:0}
+.ib:hover{color:var(--ink);border-color:var(--mute)}
+.ib svg{width:16px;height:16px}
+
+/* таймер */
+.timer{top:max(16px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);text-align:center}
+.time{font-size:40px;font-weight:500;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1}
+.time.run{color:var(--lime)}
+.count{font-size:12px;color:var(--mute);margin-top:6px;font-variant-numeric:tabular-nums}
+.count b{color:var(--ink);font-weight:600}
+
+/* инструкция */
+.help{left:20px;top:50%;transform:translateY(-50%);font-size:13px;line-height:1.5;color:var(--mute);max-width:240px}
+.help .h{color:var(--ink);font-weight:500;font-size:22px;line-height:1.1;letter-spacing:-.3px;margin-bottom:18px}
+.help .h i{font-style:normal;color:var(--lime)}
+.help .h small{display:block;margin-top:6px;font-size:13px;font-weight:400;letter-spacing:0;color:var(--mute)}
+.help ol{list-style:none;margin:0;padding:0}
+.help li{display:flex;gap:14px;margin:4px 0}
+.help li span{color:var(--dim);font-size:9pt;width:30px;flex:none;padding-top:2px}
+.help .mood{margin-top:18px;font-size:11px;color:var(--dim)}
+.help .mood b{color:var(--lime);font-weight:500}
+
+/* подвал */
+.foot{bottom:max(14px,env(safe-area-inset-bottom));left:20px;right:20px;display:flex;justify-content:space-between;font-size:10px;color:var(--dim)}
+.foot a{color:var(--mute);text-decoration:none}
+.foot a:hover{color:var(--lime)}
+
+/* пуш-уведомление на старте */
+.push{z-index:3;left:50%;top:max(96px,calc(env(safe-area-inset-top) + 90px));width:min(360px,calc(100% - 32px));
+  transform:translate(-50%,-30px);opacity:0;transition:transform .45s cubic-bezier(.2,.9,.25,1.15),opacity .3s;
+  background:rgba(40,40,40,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border:1px solid var(--rule);border-radius:18px;padding:11px 14px 11px 11px;display:flex;gap:12px;align-items:center}
+.push.on{transform:translate(-50%,0);opacity:1}
+.push .ico{width:38px;height:38px;border-radius:10px;background:var(--lime);display:grid;place-items:center;flex:none}
+.push .ico svg{width:20px;height:20px}
+.push .tx{flex:1;min-width:0}
+.push .t1{display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:600}
+.push .t1 span{font-weight:400;color:var(--mute);font-size:11px;white-space:nowrap}
+.push .t2{font-size:13px;color:#C8C8C8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* подсказка при первом запуске */
+.hint{z-index:2;opacity:0;transition:opacity .3s;width:0;height:0}
+.hint.on{opacity:1}
+.hint .ring{position:absolute;left:-22px;top:-22px;width:44px;height:44px;border-radius:50%;border:2px solid var(--lime);
+  background:rgba(198,255,0,.15);animation:drag 1.8s ease-in-out infinite}
+.hint .hl{position:absolute;left:34px;top:-10px;white-space:nowrap;font-size:13px;font-weight:600;color:var(--lime)}
+@keyframes drag{
+  0%{transform:translateY(0) scale(1.2);opacity:0}
+  15%{transform:translateY(0) scale(.85);opacity:1}
+  70%{transform:translateY(-90px) scale(.85);opacity:1}
+  100%{transform:translateY(-90px) scale(.85);opacity:0}
+}
+
+/* отклик счётчика */
+.count b{display:inline-block}
+.count b.bump{animation:bump .4s ease-out}
+@keyframes bump{0%{transform:scale(1.7);color:var(--lime)}100%{transform:scale(1)}}
+
+/* тост */
+.toast{z-index:6;top:30%;left:50%;transform:translate(-50%,-10px);background:var(--lime);color:#141414;font-weight:600;font-size:15px;
+  padding:10px 18px;border-radius:999px;opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* финал */
+.over{position:fixed;inset:0;z-index:5;display:none;align-items:center;justify-content:center;background:rgba(14,14,14,.72);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:16px}
+.over.on{display:flex}
+.card{background:#1C1C1C;border:1px solid var(--rule);border-radius:18px;padding:26px 28px 22px;width:min(440px,100%);
+  max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow:auto}
+.feedH{font-size:11px;color:var(--mute);margin:16px 0 8px}
+.feed{max-height:min(30vh,250px);overflow:auto;display:flex;flex-direction:column;gap:6px;padding:12px;background:#141414;
+  border-radius:12px;margin-bottom:18px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.fb{align-self:flex-start;max-width:82%;background:#F2F2EE;color:#141414;border-radius:14px 14px 14px 4px;padding:7px 11px;font-size:13px;line-height:1.3}
+.fb.l{background:var(--lime)}
+.fb time{float:right;font-size:10px;color:rgba(20,20,20,.45);margin:5px 0 0 10px}
+.fb.v{display:flex;align-items:center;gap:8px;background:#2E2E2E;border:1px solid #5A5A5A;color:#9A9A9A;padding:6px 11px 6px 6px}
+.fb.v i{width:24px;height:24px;border-radius:50%;background:var(--lime);position:relative;flex:none}
+.fb.v i:after{content:"";position:absolute;left:9px;top:6px;border-left:8px solid #141414;border-top:6px solid transparent;border-bottom:6px solid transparent}
+.fb.v b{width:70px;height:12px;background:repeating-linear-gradient(90deg,#6A6A6A 0 2px,transparent 2px 5px);border-radius:2px}
+.fb.v time{color:#6A6A6A}
+.typing{align-self:flex-start;font-size:11px;color:var(--mute);padding:2px 4px}
+.typing span{animation:blink 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
+.b.ic{padding:0;width:44px;display:grid;place-items:center}
+.b.ic svg{width:17px;height:17px}
+.foot2{display:flex;gap:16px;align-items:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--rule)}
+.foot2 .sig{flex:1;margin:0;padding:0;border:0}
+.lbl{font-size:11px;color:var(--mute);text-transform:lowercase}
+.big{font-size:64px;font-weight:500;letter-spacing:-2px;line-height:1;color:var(--lime);margin:6px 0 4px;font-variant-numeric:tabular-nums}
+.big small{font-size:22px;letter-spacing:0;color:var(--ink);margin-left:4px}
+.rank{font-size:16px;font-weight:500;line-height:1.3;margin:10px 0 4px}
+.best{font-size:12px;color:var(--mute);margin-bottom:20px}
+.best b{color:var(--ink);font-weight:600}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.b{font:inherit;font-size:14px;font-weight:600;border-radius:999px;padding:11px 18px;cursor:pointer;border:1px solid var(--rule);background:transparent;color:var(--ink)}
+.b.p{background:var(--lime);border-color:var(--lime);color:#141414}
+.b:hover{filter:brightness(1.08)}
+.sig{margin-top:18px;padding-top:14px;border-top:1px solid var(--rule);font-size:11px;line-height:1.45;color:var(--mute)}
+.sig a{color:var(--ink);text-decoration:none;font-weight:500}
+.sig a:hover{color:var(--lime)}
+.qr{width:72px;flex:none}
+.qr img{width:100%;display:block;border-radius:6px}
+
+@media (max-width:760px), (orientation:portrait){
+  .dirs{display:none}
+  .foot .long{display:none}
+  .help{top:auto;bottom:56px;transform:none;left:16px;right:16px;max-width:none;font-size:12px}
+  .help .h{font-size:17px;margin-bottom:8px}
+  .help ol{display:none}
+  .help .mood{margin-top:4px}
+  .top{left:16px;right:16px}
+  .time{font-size:30px}
+  .timer{top:max(64px,calc(env(safe-area-inset-top) + 56px))}
+  .qr{display:none}
+  .foot{left:16px;right:16px}
+  .push{top:max(126px,calc(env(safe-area-inset-top) + 118px))}
+  .card{padding:22px 20px 18px}
+  .big{font-size:54px}
+}
+.playing .help{opacity:.35;transition:opacity .4s}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="hud top">
+  <img class="logo" src="logo-white.svg" alt="RGBY">
+  <div class="dirs"><b>креатив</b> / брендинг / продакшн / мультимедиа</div>
+  <div class="btns">
+    <button class="ib" id="snd" title="Звук" aria-label="Звук">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path id="sndw" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+    </button>
+    <button class="ib" id="rst" title="Заново" aria-label="Заново">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v5h5"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="hud timer">
+  <div class="time" id="time">00.0</div>
+  <div class="count">на столе <b id="out">0</b> / <span id="tot">0</span></div>
+</div>
+
+<div class="hud help" id="help">
+  <div class="h">Высыпь все <i>правки</i> на&nbsp;стол<small>и возвращайся к работе</small></div>
+  <ol>
+    <li><span>01.1</span>Хватай папку</li>
+    <li><span>01.2</span>Переворачивай и тряси</li>
+    <li><span>01.3</span>Бери за дно — так быстрее</li>
+  </ol>
+  <div class="mood" id="mood"></div>
+</div>
+
+<div class="hud toast" id="toast"></div>
+
+<div class="hud foot">
+  <span>ООО «РГБИ»<span class="long"> · креативное агентство с собственным CG-продакшном</span></span>
+  <a href="https://t.me/hellorgby" target="_blank" rel="noopener">@hellorgby</a>
+</div>
+
+<div class="hud push" id="push">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="#141414"><path d="M4 6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H10l-5 4v-4.2A3 3 0 0 1 4 14z"/></svg></div>
+  <div class="tx">
+    <div class="t1">Клиент<span id="pushN">сейчас</span></div>
+    <div class="t2" id="pushT"></div>
+  </div>
+</div>
+
+<div class="hud hint" id="hint"><div class="ring"></div><div class="hl">хватай и тяни</div></div>
+
+<div class="over" id="over">
+  <div class="card">
+    <div class="lbl" id="rLbl">все правки на столе</div>
+    <div class="big" id="rTime">0.0<small>с</small></div>
+    <div class="rank" id="rRank"></div>
+    <div class="best" id="rBest"></div>
+    <div class="feedH">что сегодня прислал клиент</div>
+    <div class="feed" id="feed"></div>
+    <div class="row">
+      <button class="b p" id="again">Ещё раз</button>
+      <button class="b" id="share">Поделиться</button>
+      <button class="b ic" id="save" title="Сохранить картинку" aria-label="Сохранить картинку">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>
+      </button>
+    </div>
+    <div class="foot2">
+      <div class="sig">Игру сделали в RGBY. Правки вносим быстро.<br>
+        <a href="https://t.me/hellorgby" target="_blank" rel="noopener">@hellorgby</a> · 8 804 700 73 70</div>
+      <div class="qr"><img src="qr-card.png" alt="QR: t.me/hellorgby"></div>
+    </div>
+  </div>
+</div>
+
+<script src="matter.min.js"></script>
+<script>
+(() => {
+"use strict";
+const { Engine, Bodies, Body, Composite, Constraint, Vector, Events } = Matter;
+
+const C = {
+  bg: '#141414', floor: '#0E0E0E', rule: '#3A3A3A',
+  lime: '#C6FF00', paper: '#F2F2EE', ink: '#141414',
+  folder: '#2E2E2E', folderEdge: '#5A5A5A', inside: '#1C1C1C', front: '#3A3A3A',
+  desk: '#222222', deskEdge: '#4A4A4A'
+};
+const SUB = 4;                 // подшаги физики на кадр: меньше «пролётов» сквозь стенки
+const STEP = 1000 / 60 / SUB;
+const SHAKE_NEED = 6;          // столько встряхиваний отклеивают последнюю правку
+const SHAKE_SPEED = 9;         // минимальная скорость рывка, который считается встряхиванием
+
+const POOL = [
+  'логотип побольше', 'сделайте вау', 'а можно поярче?', 'шрифт как у Apple',
+  'верните как было', 'дорого, но недорого', 'убрать воздух', 'добавьте котика',
+  'а если в 3D?', 'к утру успеете?', 'чуть левее. нет, правее', 'больше эмоций',
+  'жене не понравилось', 'директор посмотрел', 'а где креатив?', 'телефон покрупнее',
+  'давайте поиграем шрифтами', 'синий, но не такой синий', 'вы тут?', '???',
+  'созвонимся на 5 минут?', 'voice:2:47', 'voice:4:12'
+];
+const STUCK_TEXT = 'теперь хорошо, но…';
+
+// Скрытый слой: правок больше в пятницу вечером
+function mood() {
+  const d = new Date(), wd = d.getDay(), h = d.getHours();
+  const evening = h >= 18, night = h < 7;
+  let n = 7, t = 'Обычный день, правки по графику';
+  if (wd === 1) { n += 1; t = 'Понедельник: клиент вернулся с идеями'; }
+  if (wd === 0 || wd === 6) { n += 1; t = 'Выходной. Клиенту не спится'; }
+  if (wd === 5) { n += 2; t = 'Пятница: клиент наконец открыл макет'; }
+  if (evening) { n += 2; t = wd === 5 ? 'Пятница, 18:00. Классика' : 'Вечер: «глянете до утра?»'; }
+  if (night) { n += 2; t = 'Ночь. «Вы же всё равно не спите?»'; }
+  return { n, t };
+}
+
+const $ = id => document.getElementById(id);
+const cv = $('c'), ctx = cv.getContext('2d');
+let W, H, DPR, S, floorY;
+let engine, folder, geo, walls, notes = [], queue = [], stuckC = null, grab = null, pointer = null;
+let state, shake = 0, vPrev = { x: 0, y: 0 }, peak = { x: 0, y: 0 }, toastShown = false;
+let maxOut = 0, readyF = 0, pushTimer, shareBlob = null;
+
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+
+// ---------- мир ----------
+function build() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = W * DPR; cv.height = H * DPR;
+  const narrow = W <= 760 || W < H; // телефон или планшет в портрете
+  S = Math.max(0.55, Math.min(1.35, Math.min(W / (narrow ? 430 : 560), H / (narrow ? 820 : 700))));
+  floorY = narrow ? H - 150 : H - Math.max(56, 78 * S);
+
+  engine = Engine.create({ positionIterations: 10, velocityIterations: 8 });
+  engine.gravity.y = 1;
+  const world = engine.world;
+
+  const wallOpt = { isStatic: true, friction: 0.8, restitution: 0.05 };
+  walls = {
+    floor: Bodies.rectangle(W / 2, floorY + 250, W * 6, 500, wallOpt),
+    left: Bodies.rectangle(-250, H / 2, 500, H * 4, wallOpt),
+    right: Bodies.rectangle(W + 250, H / 2, 500, H * 4, wallOpt),
+    ceil: Bodies.rectangle(W / 2, -H - 250, W * 6, 500, wallOpt)
+  };
+  Composite.add(world, Object.values(walls));
+
+  // Папка-короб с узкой прорезью сверху: правки выходят по одной-две, а не все разом
+  const wi = 220 * S, hi = 300 * S, t = 26 * S, lip = 56 * S, lt = 18 * S;
+  const x0 = W / 2, y0 = floorY - hi / 2 - t;
+  const fo = { friction: 0.6, restitution: 0.05, density: 0.002 };
+  const bottom = Bodies.rectangle(x0, y0 + hi / 2 + t / 2, wi, t, fo);
+  const left = Bodies.rectangle(x0 - wi / 2 - t / 2, y0 + t / 2, t, hi + t, fo);
+  const right = Bodies.rectangle(x0 + wi / 2 + t / 2, y0 + t / 2, t, hi + t, fo);
+  const lipL = Bodies.rectangle(x0 - wi / 2 + lip / 2, y0 - hi / 2 + lt / 2, lip, lt, fo);
+  const lipR = Bodies.rectangle(x0 + wi / 2 - lip / 2, y0 - hi / 2 + lt / 2, lip, lt, fo);
+  folder = Body.create({ parts: [bottom, left, right, lipL, lipR], frictionAir: 0.02, friction: 0.6, restitution: 0.05 });
+  geo = { wi, hi, t, lip, lt, c: { x: x0 - folder.position.x, y: y0 - folder.position.y } };
+  Composite.add(world, folder);
+
+  // Правки — сообщения клиента; на старте влетают в папку по одному
+  const m = mood();
+  $('mood').innerHTML = m.t + ' · правок: <b>' + m.n + '</b>';
+  const texts = POOL.slice().sort(() => Math.random() - 0.5).slice(0, m.n - 1);
+  queue = [STUCK_TEXT].concat(texts).map((txt, i) => makeMsg(txt, i === 0));
+  // время сообщений — настоящее: переписка идёт последние минуты, «теперь хорошо, но…» приходит последним
+  let ts = Date.now() - queue.length * 100e3;
+  chatOrder().forEach(m => { ts += (30 + Math.random() * 110) * 1e3; m.stamp = hhmm(ts); });
+  notes = []; stuckC = null; maxOut = 0; readyF = 0; shareBlob = null;
+  $('push').classList.remove('on'); $('hint').classList.remove('on'); clearTimeout(pushTimer);
+
+  Events.on(engine, 'collisionStart', onHit);
+
+  state = { phase: 'intro', introF: 0, t0: 0, time: 0, total: queue.length };
+  grab = null; shake = 0; toastShown = false; vPrev = { x: 0, y: 0 }; peak = { x: 0, y: 0 };
+  $('tot').textContent = queue.length;
+  $('out').textContent = '0';
+  $('time').textContent = '00.0';
+  $('time').classList.remove('run');
+  document.body.classList.remove('playing');
+  $('over').classList.remove('on');
+  $('toast').classList.remove('on');
+}
+
+// порядок в переписке: все правки, а «теперь хорошо, но…» — последней
+function chatOrder() { return queue.slice(1).concat(queue[0]); }
+function hhmm(ms) { const d = new Date(ms); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); }
+function pluralMsg(n) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return n + ' новое сообщение';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return n + ' новых сообщения';
+  return n + ' новых сообщений';
+}
+
+// сообщение: размеры пузыря считаются по тексту
+function makeMsg(txt, stuck) {
+  const fs = 10.5 * S, pad = 8 * S;
+  const stamp = (17 + Math.floor(Math.random() * 3)) + ':' + (10 + Math.floor(Math.random() * 50));
+  if (txt.startsWith('voice:')) {
+    const bars = Array.from({ length: 16 }, (_, i) => 0.3 + 0.7 * Math.abs(Math.sin(i * 1.7 + Math.random())));
+    return { kind: 'voice', dur: txt.slice(6), bars, w: 116 * S, h: 34 * S, fs, color: 'dark', stuck };
+  }
+  ctx.font = '500 ' + fs + 'px Inter, sans-serif';
+  const lines = wrap(txt, 100 * S);
+  const tw = Math.max(...lines.map(l => ctx.measureText(l).width));
+  const w = Math.max(64 * S, Math.min(124 * S, tw + 2 * pad + 4 * S));
+  const h = lines.length * fs * 1.25 + 2 * pad + 5 * S;
+  const color = !stuck && Math.random() < 0.3 ? C.lime : C.paper;
+  return { kind: 'text', text: txt, lines, w, h, fs, color, stuck, stamp };
+}
+
+function spawn(spec, k) {
+  const { wi, hi, lt } = geo;
+  const lim = wi / 2 - spec.w / 2 - 2 * S;
+  const x = Math.max(-lim, Math.min(lim, [0, -wi / 4, wi / 4][k % 3]));
+  const p = toWorld({ x, y: -hi / 2 + lt + spec.h / 2 + 4 * S });
+  const b = Bodies.rectangle(p.x, p.y, spec.w, spec.h, {
+    chamfer: { radius: Math.min(12 * S, spec.h / 2 - 1) }, friction: 0.45, frictionAir: 0.045, restitution: 0.12, density: 0.0005
+  });
+  Body.setAngle(b, folder.angle + (Math.random() - 0.5) * 0.15);
+  b.note = Object.assign(spec, { out: false });
+  notes.push(b);
+  Composite.add(engine.world, b);
+  audio.ping();
+  // пуш: счётчик и превью последнего сообщения
+  $('pushN').textContent = pluralMsg(notes.length);
+  $('pushT').textContent = spec.kind === 'voice' ? 'Голосовое сообщение · ' + spec.dur : spec.text;
+  $('push').classList.add('on');
+}
+
+// последнюю правку «приклеиваем» ко дну, когда стопка улеглась
+function attachStuck() {
+  const st = notes[0];
+  stuckC = Constraint.create({
+    bodyA: folder, pointA: Vector.sub(st.position, folder.position),
+    bodyB: st, pointB: { x: 0, y: 0 }, length: 0, stiffness: 0.5, damping: 0.1
+  });
+  Composite.add(engine.world, stuckC);
+}
+
+// координаты относительно центра внутренности папки
+function toLocal(p) {
+  const r = Vector.rotate(Vector.sub(p, folder.position), -folder.angle);
+  return { x: r.x - geo.c.x, y: r.y - geo.c.y };
+}
+function toWorld(q) {
+  return Vector.add(folder.position, Vector.rotate({ x: q.x + geo.c.x, y: q.y + geo.c.y }, folder.angle));
+}
+function isInside(b) {
+  const q = toLocal(b.position);
+  return Math.abs(q.x) < geo.wi / 2 && q.y > -geo.hi / 2 && q.y < geo.hi / 2;
+}
+
+// ---------- ввод ----------
+function pt(e) { return { x: e.clientX, y: e.clientY }; }
+let grabId = null;
+cv.addEventListener('pointerdown', e => {
+  audio.unlock();
+  if (!state || (state.phase !== 'ready' && state.phase !== 'play')) return;
+  if (grab) return; // папку держит один палец; второй не перехватывает
+  const p = pt(e), q = toLocal(p);
+  const pad = (e.pointerType === 'touch' ? 26 : 10) * S;
+  const tab = 22 * S; // ярлычок над краем — за него тоже можно взять
+  const hit = Math.abs(q.x) < geo.wi / 2 + geo.t + pad && q.y > -geo.hi / 2 - tab - pad && q.y < geo.hi / 2 + geo.t + pad;
+  if (!hit) return;
+  try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+  grabId = e.pointerId;
+  pointer = p;
+  grab = Constraint.create({
+    pointA: { x: p.x, y: p.y }, bodyB: folder, pointB: Vector.sub(p, folder.position),
+    length: 0, stiffness: 0.035, damping: 0.08
+  });
+  Composite.add(engine.world, grab);
+  cv.classList.add('grabbing');
+  haptic(12);
+  $('hint').classList.remove('on'); $('push').classList.remove('on');
+  store.set('pravki_seen', '1');
+  if (state.phase === 'ready') {
+    state.phase = 'play'; state.t0 = performance.now();
+    $('time').classList.add('run');
+    document.body.classList.add('playing');
+  }
+});
+cv.addEventListener('pointermove', e => {
+  if (!grab || e.pointerId !== grabId) return;
+  pointer = { x: Math.max(0, Math.min(W, e.clientX)), y: Math.max(0, Math.min(H, e.clientY)) };
+});
+function release() {
+  if (grab) { Composite.remove(engine.world, grab); grab = null; }
+  grabId = null;
+  cv.classList.remove('grabbing');
+}
+const onUp = e => { if (e.pointerId === grabId) release(); };
+addEventListener('pointerup', onUp);
+addEventListener('pointercancel', onUp);
+cv.addEventListener('lostpointercapture', onUp);
+
+// ---------- физика ----------
+function clampSpeed(b, max) {
+  if (Body.getSpeed(b) > max) Body.setSpeed(b, max);
+}
+function step() {
+  if (grab && pointer) { grab.pointA.x = pointer.x; grab.pointA.y = pointer.y; }
+  Engine.update(engine, STEP);
+  clampSpeed(folder, 34 * S);
+  if (Math.abs(folder.angularVelocity) > 0.35) Body.setAngularVelocity(folder, Math.sign(folder.angularVelocity) * 0.35);
+  for (const b of notes) clampSpeed(b, 40 * S);
+}
+
+function tick(now) {
+  // тряска: считаем развороты папки туда-обратно на хорошей скорости
+  const v = Body.getVelocity(folder);
+  for (const ax of ['x', 'y']) {
+    const sp = Math.abs(v[ax]);
+    if (sp > 0.5 && Math.sign(v[ax]) !== Math.sign(vPrev[ax] || v[ax])) {
+      if (peak[ax] > SHAKE_SPEED * S && grab) shake++;
+      peak[ax] = 0;
+    }
+    peak[ax] = Math.max(peak[ax], sp);
+    if (sp > 0.5) vPrev[ax] = v[ax];
+  }
+
+  if (state.phase === 'intro') {
+    const f = ++state.introF, every = 8;
+    if (f % every === 1 && notes.length < queue.length) spawn(queue[notes.length], notes.length);
+    if (notes.length === queue.length && f > queue.length * every + 30) {
+      attachStuck(); state.phase = 'ready';
+      pushTimer = setTimeout(() => $('push').classList.remove('on'), 1400);
+    }
+  }
+
+  // подсказка: при первом запуске сразу, потом — если игрок медлит 5 секунд
+  if (state.phase === 'ready') {
+    readyF++;
+    const show = (!store.get('pravki_seen') && readyF > 20) || readyF > 300;
+    const h = $('hint');
+    if (show) {
+      const p = toWorld({ x: 0, y: geo.hi / 2 + geo.t / 2 });
+      h.style.left = p.x + 'px'; h.style.top = p.y + 'px';
+    }
+    h.classList.toggle('on', show);
+  }
+
+  let out = 0;
+  for (const b of notes) { b.note.out = !isInside(b); if (b.note.out) out++; }
+
+  if (state.phase === 'play') {
+    state.time = Math.max(0, (now - state.t0) / 1000); // время кадра может чуть отставать от времени касания
+    $('time').textContent = fmt(state.time);
+    $('out').textContent = out;
+    // каждая новая правка на столе — подпрыгивание счётчика и нота, выше с каждой следующей
+    if (out > maxOut) {
+      maxOut = out;
+      const el = $('out'); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+      audio.note(out - 1);
+    }
+
+    if (stuckC) {
+      const others = notes.filter(b => !b.note.stuck).every(b => b.note.out);
+      if (others) {
+        if (!toastShown) { toastShown = true; shake = 0; toast('«Теперь хорошо, но…» Тряси!'); }
+        stuckC.stiffness = 0.5 * Math.max(0.15, 1 - shake / SHAKE_NEED);
+        if (shake >= SHAKE_NEED) {
+          Composite.remove(engine.world, stuckC); stuckC = null;
+          hideToast();
+          haptic(30);
+          audio.pop();
+        }
+      }
+    }
+    if (out === notes.length) finish();
+  }
+}
+
+function fmt(s) { return (s < 10 ? '0' : '') + s.toFixed(1); }
+
+// ---------- финал ----------
+const RANKS = [
+  [6, 'Арт-директор. Правки отскакивают'],
+  [12, 'Сеньор. Всё внесено до созвона'],
+  [20, 'Мидл. Правки в работе, кофе в руке'],
+  [35, 'Джун. Медленно, зато без скандала'],
+  [Infinity, 'Стажёр. Пока правки сильнее. Пока']
+];
+function finish() {
+  state.phase = 'done';
+  release();
+  audio.win();
+  haptic([20, 60, 20]);
+  const t = state.time, n = notes.length;
+  $('time').textContent = fmt(t);
+  $('time').classList.remove('run');
+  const key = 'pravki_best_' + n;
+  let prev = parseFloat(store.get(key));
+  if (!(prev > 0)) prev = NaN;
+  const isBest = !(prev <= t);
+  if (isBest) store.set(key, String(t));
+  $('rLbl').textContent = 'все ' + n + ' ' + plural(n) + ' на столе';
+  $('rTime').innerHTML = t.toFixed(1) + '<small>с</small>';
+  $('rRank').textContent = RANKS.find(r => t < r[0])[1];
+  $('rBest').innerHTML = isBest
+    ? (isNaN(prev) ? 'Первый результат при ' + n + ' ' + plural(n, true) : '<b>Новый рекорд!</b> Было ' + prev.toFixed(1) + ' с')
+    : 'Ваш рекорд при ' + n + ' ' + plural(n, true) + ': <b>' + prev.toFixed(1) + ' с</b>';
+  renderFeed();
+  shareBlob = null;
+  makeCard().then(b => { shareBlob = b; }).catch(() => {});
+  setTimeout(() => { $('over').classList.add('on'); $('feed').scrollTop = 1e4; }, 700);
+}
+
+// лента «что сегодня прислал клиент»
+function renderFeed() {
+  const feed = $('feed'); feed.textContent = '';
+  for (const m of chatOrder()) {
+    const d = document.createElement('div');
+    if (m.kind === 'voice') {
+      d.className = 'fb v';
+      d.append(document.createElement('i'), document.createElement('b'), document.createTextNode(m.dur));
+    } else {
+      d.className = 'fb' + (m.color === C.lime ? ' l' : '');
+      d.textContent = m.text;
+    }
+    const t = document.createElement('time'); t.textContent = m.stamp; d.append(t);
+    feed.append(d);
+  }
+  const typing = document.createElement('div'); typing.className = 'typing';
+  typing.innerHTML = 'клиент печатает<span>.</span><span>.</span><span>.</span>';
+  feed.append(typing);
+}
+
+// адрес, которым делимся: публичный. Внутри iframe и при локальном запуске
+// (localhost, адрес в домашней сети, файл) берём канонический из og:url
+function shareUrl() {
+  const og = document.querySelector('meta[property="og:url"]');
+  const local = location.protocol === 'file:' ||
+    /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[::1\])/.test(location.hostname);
+  if (og && (local || window.top !== window)) return og.content;
+  return location.origin + location.pathname.replace(/index\.html$/, '');
+}
+
+// картинка результата 1080×1350 для Telegram и сторис
+function makeCard() {
+  const Wc = 1080, Hc = 1350, c = document.createElement('canvas');
+  c.width = Wc; c.height = Hc;
+  const g = c.getContext('2d');
+  const F = (w, s) => w + ' ' + s + 'px Inter, sans-serif';
+  g.fillStyle = '#141414'; g.fillRect(0, 0, Wc, Hc);
+  // стол внизу
+  g.fillStyle = '#222'; g.fillRect(0, 1180, Wc, 14);
+  g.fillStyle = '#0E0E0E'; g.fillRect(0, 1194, Wc, Hc - 1194);
+  g.fillStyle = '#4A4A4A'; g.fillRect(0, 1180, Wc, 2);
+
+  const logo = document.querySelector('.logo');
+  if (logo && logo.complete && logo.naturalWidth) g.drawImage(logo, 80, 80, 56 * logo.naturalWidth / logo.naturalHeight, 56);
+  g.fillStyle = '#5A5A5A'; g.font = F(400, 28); g.textBaseline = 'middle';
+  g.fillText('мини-игра «Вытряхни правки»', 180, 108);
+
+  const n = notes.length;
+  g.textBaseline = 'alphabetic';
+  g.fillStyle = '#FFFFFF'; g.font = F(500, 46);
+  g.fillText(n + ' ' + plural(n) + ' на столе за', 80, 300);
+  g.fillStyle = C.lime; g.font = F(500, 230);
+  const tStr = state.time.toFixed(1);
+  g.fillText(tStr, 66, 520);
+  const tw = g.measureText(tStr).width;
+  g.fillStyle = '#FFFFFF'; g.font = F(500, 70); g.fillText('с', 66 + tw + 18, 520);
+  g.font = F(500, 44);
+  wrapTo(g, RANKS.find(r => state.time < r[0])[1], 920).forEach((l, i) => g.fillText(l, 80, 610 + i * 56));
+
+  // три последних сообщения, последним — «теперь хорошо, но…»
+  const msgs = chatOrder().filter(m => m.kind === 'text').slice(-3);
+  const tilt = [-0.04, 0.03, -0.02], xs = [80, 250, 130];
+  let y = 730;
+  msgs.forEach((m, i) => {
+    g.font = F(500, 44);
+    const w = Math.min(860, g.measureText(m.text).width + 72), h = 94;
+    g.save(); g.translate(xs[i] + w / 2, y + h / 2); g.rotate(tilt[i]);
+    g.fillStyle = 'rgba(0,0,0,.4)'; cardBubble(g, -w / 2 + 6, -h / 2 + 8, w, h); g.fill();
+    g.fillStyle = m.color === C.lime ? C.lime : '#F2F2EE'; cardBubble(g, -w / 2, -h / 2, w, h); g.fill();
+    g.fillStyle = '#141414'; g.textBaseline = 'middle'; g.fillText(m.text, -w / 2 + 36, 2);
+    g.restore();
+    y += 128;
+  });
+  g.textBaseline = 'middle'; g.fillStyle = '#5A5A5A'; g.font = F(400, 30);
+  g.fillText('клиент печатает…', 92, y + 24);
+
+  g.textBaseline = 'alphabetic';
+  g.fillStyle = '#FFFFFF'; g.font = F(500, 34);
+  g.fillText('Сможешь быстрее?', 80, 1268);
+  g.fillStyle = '#8A8A8A'; g.font = F(400, 28);
+  g.fillText(shareUrl().replace(/^https?:\/\//, '').replace(/\/$/, ''), 80, 1310);
+  g.textAlign = 'right'; g.fillStyle = C.lime; g.font = F(500, 30);
+  g.fillText('@hellorgby', Wc - 80, 1290);
+  return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('toBlob')), 'image/png'));
+}
+function cardBubble(g, x, y, w, h) {
+  const r = 30;
+  g.beginPath();
+  g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.arcTo(x + w, y, x + w, y + r, r);
+  g.lineTo(x + w, y + h - r); g.arcTo(x + w, y + h, x + w - r, y + h, r);
+  g.lineTo(x + 20, y + h); g.quadraticCurveTo(x + 4, y + h + 2, x - 12, y + h + 3);
+  g.quadraticCurveTo(x + 2, y + h - 8, x, y + h - 24);
+  g.lineTo(x, y + r); g.arcTo(x, y, x + r, y, r); g.closePath();
+}
+function wrapTo(g, text, maxW) {
+  const words = text.split(' '), lines = []; let cur = '';
+  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (g.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
+  if (cur) lines.push(cur);
+  return lines;
+}
+function plural(n, loc) {
+  if (loc) return 'правках';
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return 'правка';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'правки';
+  return 'правок';
+}
+
+$('again').onclick = () => build();
+$('rst').onclick = () => build();
+$('share').onclick = async () => {
+  const text = state.total + ' ' + plural(state.total) + ' на столе за ' + state.time.toFixed(1) + ' с. Сможешь быстрее?';
+  const url = shareUrl();
+  // сначала картинкой (она готовится заранее, чтобы iOS не потерял жест пользователя), потом текстом
+  if (shareBlob && navigator.canShare) {
+    const file = new File([shareBlob], 'vytryakhni-pravki.png', { type: 'image/png' });
+    if (navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], text: text + ' ' + url }); return; }
+      catch (e) { if (e.name === 'AbortError') return; }
+    }
+  }
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Вытряхни правки', text, url }); } catch (e) {}
+    return;
+  }
+  const msg = text + ' ' + url;
+  let ok = false;
+  try { await navigator.clipboard.writeText(msg); ok = true; } catch (e) {
+    // запасной путь для старых браузеров и http
+    const ta = document.createElement('textarea'); ta.value = msg; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.append(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch (e2) {}
+    ta.remove();
+  }
+  toast(ok ? 'Результат и ссылка скопированы' : 'Не удалось скопировать', 1800);
+};
+
+$('save').onclick = async () => {
+  try {
+    const blob = shareBlob || await makeCard();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'vytryakhni-pravki.png';
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  } catch (e) { toast('Не удалось сохранить картинку', 1800); }
+};
+
+let toastTimer;
+function toast(msg, ms) {
+  const el = $('toast'); el.textContent = msg; el.classList.add('on');
+  clearTimeout(toastTimer); if (ms) toastTimer = setTimeout(hideToast, ms);
+}
+function hideToast() { $('toast').classList.remove('on'); }
+
+// ---------- звук: мягкое шуршание бумаги и тихие тоны ----------
+const audio = (() => {
+  let ac = null, buf = null, out = null, on = store.get('pravki_mute') !== '1', last = 0;
+  function unlock() {
+    if (!on) return;
+    if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+    try {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      // розовый шум: мягче белого, без «песка» в верхах
+      buf = ac.createBuffer(1, ac.sampleRate * 0.25, ac.sampleRate);
+      const d = buf.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0;
+      for (let i = 0; i < d.length; i++) {
+        const w = Math.random() * 2 - 1;
+        b0 = 0.99765 * b0 + w * 0.099; b1 = 0.963 * b1 + w * 0.2965; b2 = 0.57 * b2 + w * 1.0527;
+        d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.2;
+      }
+      // общий компрессор, чтобы серия ударов не складывалась в громкий треск
+      out = ac.createDynamicsCompressor();
+      out.threshold.value = -28; out.ratio.value = 6; out.attack.value = 0.003; out.release.value = 0.15;
+      out.connect(ac.destination);
+    } catch (e) { ac = null; }
+  }
+  function env(g, t, vol, attack, dur) {
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  }
+  function rustle(vol, dur) {
+    if (!ac || !on) return;
+    const t = ac.currentTime;
+    if (t - last < 0.06) return; last = t;
+    const s = ac.createBufferSource(); s.buffer = buf; s.playbackRate.value = 0.7 + Math.random() * 0.4;
+    const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900 + Math.random() * 500; f.Q.value = 0.5;
+    const g = ac.createGain(); env(g, t, vol, 0.006, dur);
+    s.connect(f); f.connect(g); g.connect(out);
+    s.start(t, Math.random() * 0.1, dur + 0.02);
+  }
+  function tone(freq, vol, at, dur) {
+    if (!ac || !on) return;
+    const t = ac.currentTime + at;
+    const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+    const g = ac.createGain(); env(g, t, vol, 0.01, dur);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + 0.05);
+  }
+  return {
+    unlock,
+    hit(v) { rustle(Math.min(0.09, 0.012 * Math.sqrt(v)), 0.07 + Math.random() * 0.04); },
+    pop() { tone(587, 0.07, 0, 0.18); tone(880, 0.05, 0.07, 0.22); },
+    ping() { tone(1175, 0.03, 0, 0.1); tone(1568, 0.022, 0.045, 0.12); },
+    // пентатоника: любая последовательность звучит приятно
+    note(k) { const st = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26][Math.min(k, 11)]; tone(392 * Math.pow(2, st / 12), 0.035, 0, 0.16); },
+    win() { tone(523, 0.06, 0, 0.25); tone(659, 0.06, 0.1, 0.25); tone(784, 0.06, 0.2, 0.4); },
+    toggle() { on = !on; store.set('pravki_mute', on ? '0' : '1'); if (on) unlock(); return on; },
+    get on() { return on; }
+  };
+})();
+// ---------- вибрация ----------
+// Android: Vibration API. iPhone его не поддерживает; в Safari на iOS 18+ лёгкий тактильный щелчок
+// даёт переключение <input switch>, и срабатывает он только по касанию пользователя.
+const haptic = (() => {
+  let lbl = null;
+  function ensure() {
+    if (lbl) return;
+    const i = document.createElement('input');
+    i.type = 'checkbox'; i.setAttribute('switch', ''); i.id = 'hapt';
+    i.style.cssText = 'position:fixed;left:-99px;top:0;opacity:0;pointer-events:none';
+    lbl = document.createElement('label'); lbl.htmlFor = 'hapt';
+    lbl.style.cssText = 'position:fixed;left:-99px;top:0;opacity:0;pointer-events:none';
+    document.body.append(i, lbl);
+  }
+  return pattern => {
+    try {
+      if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) { navigator.vibrate(pattern); return; }
+      if (!navigator.vibrate) { ensure(); lbl.click(); }
+    } catch (e) {}
+  };
+})();
+
+function onHit(ev) {
+  for (const p of ev.pairs) {
+    const a = p.bodyA.parent, b = p.bodyB.parent;
+    if (!(a.note || b.note)) continue;
+    const rv = Vector.magnitude(Vector.sub(Body.getVelocity(a), Body.getVelocity(b)));
+    if (rv > 4) audio.hit(rv);
+  }
+}
+function paintSnd() { $('sndw').style.opacity = audio.on ? 1 : 0.15; }
+$('snd').onclick = () => { audio.toggle(); paintSnd(); };
+paintSnd();
+
+// ---------- отрисовка ----------
+function render() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+  // стол: столешница и торец
+  const top = 10 * S;
+  ctx.fillStyle = C.desk; ctx.fillRect(0, floorY, W, top);
+  ctx.fillStyle = C.floor; ctx.fillRect(0, floorY + top, W, H - floorY - top);
+  ctx.fillStyle = C.deskEdge; ctx.fillRect(0, floorY, W, 1);
+  ctx.fillStyle = 'rgba(255,255,255,.04)'; ctx.fillRect(0, floorY + top, W, 1);
+
+  const { wi, hi, t, lip, lt } = geo;
+  const o = toWorld({ x: 0, y: 0 });
+  const L = -wi / 2 - t, R = wi / 2 + t, T = -hi / 2, B = hi / 2 + t;
+
+  // тень папки на столе
+  const sh = Math.max(0, 1 - (floorY - o.y - hi / 2) / (H * 0.8));
+  ctx.fillStyle = 'rgba(0,0,0,' + (0.5 * sh) + ')';
+  ctx.beginPath(); ctx.ellipse(o.x, floorY + 4 * S, R * (0.6 + 0.4 * sh), 5 * S, 0, 0, Math.PI * 2); ctx.fill();
+
+  // задняя стенка папки с ярлычком, как у иконки папки
+  ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(folder.angle);
+  const tabW = (R - L) * 0.4, tabH = 20 * S, r = 6 * S;
+  ctx.fillStyle = C.folder; ctx.strokeStyle = C.folderEdge; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(L, B - r); ctx.lineTo(L, T - tabH + r); ctx.quadraticCurveTo(L, T - tabH, L + r, T - tabH);
+  ctx.lineTo(L + tabW - 10 * S, T - tabH); ctx.quadraticCurveTo(L + tabW - 4 * S, T - tabH, L + tabW + 4 * S, T - 2 * S);
+  ctx.lineTo(L + tabW + 8 * S, T); ctx.lineTo(R - r, T); ctx.quadraticCurveTo(R, T, R, T + r);
+  ctx.lineTo(R, B - r); ctx.quadraticCurveTo(R, B, R - r, B); ctx.lineTo(L + r, B); ctx.quadraticCurveTo(L, B, L, B - r);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  // внутренность
+  ctx.fillStyle = C.inside; ctx.fillRect(-wi / 2, T + lt, wi, hi - lt);
+  ctx.fillRect(-wi / 2 + lip, T, wi - 2 * lip, lt);
+  ctx.restore();
+
+  for (const b of notes) drawNote(b);
+
+  ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(folder.angle);
+  // бортики поверх правок: прячут касания
+  ctx.fillStyle = C.folder;
+  ctx.fillRect(L + 0.5, T + 0.5, t - 0.5, B - T - r);
+  ctx.fillRect(R - t, T + r, t - 0.5, B - T - 2 * r);
+  ctx.fillRect(-wi / 2, T + 0.5, lip, lt);
+  ctx.fillRect(wi / 2 - lip, T + 0.5, lip, lt);
+  ctx.fillRect(-wi / 2, hi / 2, wi, t - 0.5);
+  ctx.strokeStyle = 'rgba(0,0,0,.35)';
+  ctx.strokeRect(-wi / 2 + lip, T, wi - 2 * lip, 0.01);
+
+  // передняя створка: полупрозрачная, правки просвечивают
+  const fy = T + hi * 0.45;
+  ctx.globalAlpha = 0.88;
+  ctx.fillStyle = C.front;
+  ctx.beginPath();
+  ctx.moveTo(L, fy + r); ctx.quadraticCurveTo(L, fy, L + r, fy); ctx.lineTo(R - r, fy); ctx.quadraticCurveTo(R, fy, R, fy + r);
+  ctx.lineTo(R, B - r); ctx.quadraticCurveTo(R, B, R - r, B); ctx.lineTo(L + r, B); ctx.quadraticCurveTo(L, B, L, B - r);
+  ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = C.folderEdge; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(L + r, fy + 1, R - L - 2 * r, 1);
+
+  // лаймовая наклейка
+  const lw = wi * 0.78, lh = 26 * S, ly = fy + (B - fy) * 0.42;
+  ctx.fillStyle = C.lime; roundRect(-lw / 2, ly - lh / 2, lw, lh, 4 * S); ctx.fill();
+  ctx.fillStyle = C.ink; ctx.font = '600 ' + (11 * S) + 'px Inter, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('ТЗ_финал_финал2', 0, ly + 0.5);
+  ctx.restore();
+}
+
+// пузырь сообщения с хвостиком снизу слева, как входящее в мессенджере
+function bubblePath(w, h, r, dx, dy) {
+  const x = -w / 2 + dx, y = -h / 2 + dy;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + 8 * S, y + h);
+  ctx.quadraticCurveTo(x + 2 * S, y + h + 0.5 * S, x - 5 * S, y + h + 1 * S);
+  ctx.quadraticCurveTo(x + 0.5 * S, y + h - 3 * S, x, y + h - 9 * S);
+  ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+function drawNote(b) {
+  const nt = b.note, w = nt.w, h = nt.h, r = Math.min(12 * S, h / 2);
+  let x = b.position.x, y = b.position.y;
+  if (nt.stuck && stuckC && toastShown) {
+    const j = Math.min(1, shake / SHAKE_NEED) * 3 * S + 0.6;
+    x += (Math.random() - 0.5) * j; y += (Math.random() - 0.5) * j;
+  }
+  ctx.save(); ctx.translate(x, y); ctx.rotate(b.angle);
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; bubblePath(w, h, r, 2 * S, 3 * S); ctx.fill();
+
+  if (nt.kind === 'voice') {
+    ctx.fillStyle = '#2E2E2E'; bubblePath(w, h, r, 0, 0); ctx.fill();
+    ctx.strokeStyle = C.folderEdge; ctx.lineWidth = 1; ctx.stroke();
+    const cx = -w / 2 + 16 * S;
+    ctx.fillStyle = C.lime; ctx.beginPath(); ctx.arc(cx, 0, 10 * S, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = C.ink; ctx.beginPath();
+    ctx.moveTo(cx - 3 * S, -5 * S); ctx.lineTo(cx + 5 * S, 0); ctx.lineTo(cx - 3 * S, 5 * S); ctx.closePath(); ctx.fill();
+    const x0 = cx + 15 * S, bw = 2 * S, gap = 1.6 * S;
+    nt.bars.forEach((v, i) => {
+      ctx.fillStyle = i < 5 ? C.lime : '#6A6A6A';
+      const bh = v * 14 * S;
+      ctx.fillRect(x0 + i * (bw + gap), -bh / 2, bw, bh);
+    });
+    ctx.fillStyle = '#9A9A9A'; ctx.font = '500 ' + (nt.fs * 0.8) + 'px Inter, sans-serif';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(nt.dur, w / 2 - 8 * S, 0.5);
+  } else {
+    ctx.fillStyle = nt.color; bubblePath(w, h, r, 0, 0); ctx.fill();
+    const pad = 8 * S;
+    ctx.fillStyle = C.ink; ctx.font = '500 ' + nt.fs + 'px Inter, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    nt.lines.forEach((l, i) => ctx.fillText(l, -w / 2 + pad, -h / 2 + pad + i * nt.fs * 1.25));
+    ctx.fillStyle = 'rgba(20,20,20,.45)'; ctx.font = '500 ' + (nt.fs * 0.7) + 'px Inter, sans-serif';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+    ctx.fillText(nt.stamp, w / 2 - 7 * S, h / 2 - 4 * S);
+  }
+  ctx.restore();
+}
+
+const wrapCache = new Map();
+function wrap(text, maxW) {
+  const k = text + '|' + maxW;
+  if (wrapCache.has(k)) return wrapCache.get(k);
+  const words = text.split(' '), lines = []; let cur = '';
+  for (const w of words) {
+    const tst = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(tst).width > maxW && cur) { lines.push(cur); cur = w; } else cur = tst;
+  }
+  if (cur) lines.push(cur);
+  wrapCache.set(k, lines);
+  return lines;
+}
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+// ---------- цикл ----------
+let acc = 0, last = performance.now();
+function frame(now) {
+  acc += Math.min(50, now - last); last = now;
+  while (acc >= STEP) { step(); acc -= STEP; }
+  tick(now);
+  render();
+  requestAnimationFrame(frame);
+}
+
+// Смена размера: до старта пересобираем сцену, во время игры и на финале только подгоняем холст,
+// чтобы поворот телефона или панель браузера не сбрасывали партию
+let rz;
+addEventListener('resize', () => {
+  clearTimeout(rz);
+  rz = setTimeout(() => {
+    if (!state) return;
+    if (state.phase === 'intro' || state.phase === 'ready') { build(); return; }
+    W = innerWidth; H = innerHeight;
+    cv.width = W * DPR; cv.height = H * DPR;
+    Body.setPosition(walls.right, { x: W + 250, y: walls.right.position.y });
+  }, 200);
+});
+addEventListener('keydown', e => { if ((e.key === 'r' || e.key === 'к') && !e.metaKey && !e.ctrlKey) build(); });
+
+// размеры пузырей зависят от шрифта, поэтому строим мир после загрузки Inter
+const fontsReady = document.fonts ? Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]) : Promise.resolve();
+fontsReady.then(() => { wrapCache.clear(); build(); last = performance.now(); requestAnimationFrame(frame); });
+
+// для отладки и настройки: открыть с ?debug
+if (/[?&]debug\b/.test(location.search)) window.__pravki = {
+  get shake() { return shake; }, get state() { return state; }, get folder() { return folder; }, get geo() { return geo; },
+  notes: () => notes, local: toLocal, build, card: () => makeCard(),
+  // прогнать кадры синхронно (для автотестов во фоновой вкладке)
+  sim(frames, onFrame) {
+    last = Math.max(last, performance.now());
+    for (let i = 0; i < frames; i++) {
+      if (onFrame) onFrame(i);
+      for (let k = 0; k < SUB; k++) step();
+      last += 1000 / 60; tick(last);
+    }
+  }
+};
+})();
+</script>
+</body>
+</html>
