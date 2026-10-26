@@ -11,8 +11,8 @@
 <meta property="og:site_name" content="RGBY">
 <meta property="og:title" content="Вытряхни правки">
 <meta property="og:description" content="«Теперь хорошо, но…» Высыпь все правки на стол и возвращайся к работе. Сколько секунд у тебя?">
-<meta property="og:url" content="https://rgby.ru/pravki">
-<meta property="og:image" content="https://rgby.ru/pravki/og.png">
+<meta property="og:url" content="https://vynepravy.github.io/pravki/">
+<meta property="og:image" content="https://vynepravy.github.io/pravki/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -109,24 +109,25 @@ a,button{pointer-events:auto}
 .over.on{display:flex}
 .card{background:#1C1C1C;border:1px solid var(--rule);border-radius:18px;padding:26px 28px 22px;width:min(440px,100%);
   max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow:auto}
-.feedH{font-size:11px;color:var(--mute);margin:16px 0 8px}
-.feed{max-height:min(30vh,250px);overflow:auto;display:flex;flex-direction:column;gap:6px;padding:12px;background:#141414;
-  border-radius:12px;margin-bottom:18px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-.fb{align-self:flex-start;max-width:82%;background:#F2F2EE;color:#141414;border-radius:14px 14px 14px 4px;padding:7px 11px;font-size:13px;line-height:1.3}
+.cardTop{display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:11px;color:var(--mute)}
+.cardTop img{height:18px;display:block}
+.feedH{font-size:11px;color:var(--mute);margin:14px 0 8px}
+/* лента без прокрутки: сообщения переносятся, весь финал помещается в один скриншот */
+.feed{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;padding:12px;background:#141414;border-radius:12px;margin-bottom:16px}
+.fb{background:#F2F2EE;color:#141414;border-radius:13px 13px 13px 4px;padding:6px 10px;font-size:12.5px;line-height:1.25}
 .fb.l{background:var(--lime)}
-.fb time{float:right;font-size:10px;color:rgba(20,20,20,.45);margin:5px 0 0 10px}
-.fb.v{display:flex;align-items:center;gap:8px;background:#2E2E2E;border:1px solid #5A5A5A;color:#9A9A9A;padding:6px 11px 6px 6px}
-.fb.v i{width:24px;height:24px;border-radius:50%;background:var(--lime);position:relative;flex:none}
-.fb.v i:after{content:"";position:absolute;left:9px;top:6px;border-left:8px solid #141414;border-top:6px solid transparent;border-bottom:6px solid transparent}
-.fb.v b{width:70px;height:12px;background:repeating-linear-gradient(90deg,#6A6A6A 0 2px,transparent 2px 5px);border-radius:2px}
-.fb.v time{color:#6A6A6A}
-.typing{align-self:flex-start;font-size:11px;color:var(--mute);padding:2px 4px}
+.fb.v{display:flex;align-items:center;gap:6px;background:#2E2E2E;border:1px solid #5A5A5A;color:#9A9A9A;padding:3px 10px 3px 3px}
+.fb.v i{width:20px;height:20px;border-radius:50%;background:var(--lime);position:relative;flex:none}
+.fb.v i:after{content:"";position:absolute;left:8px;top:5px;border-left:7px solid #141414;border-top:5px solid transparent;border-bottom:5px solid transparent}
+.fb.v b{width:44px;height:10px;background:repeating-linear-gradient(90deg,#6A6A6A 0 2px,transparent 2px 4px);border-radius:2px}
+.typing{flex-basis:100%;font-size:11px;color:var(--mute);padding:2px 2px 0}
 .typing span{animation:blink 1.2s infinite}
 .typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
 @keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
 .b.ic{padding:0;width:44px;display:grid;place-items:center}
 .b.ic svg{width:17px;height:17px}
-.foot2{display:flex;gap:16px;align-items:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--rule)}
+.foot2{display:flex;gap:16px;align-items:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--rule)}
+.foot2 #rUrl{color:var(--lime)}
 .foot2 .sig{flex:1;margin:0;padding:0;border:0}
 .lbl{font-size:11px;color:var(--mute);text-transform:lowercase}
 .big{font-size:64px;font-weight:500;letter-spacing:-2px;line-height:1;color:var(--lime);margin:6px 0 4px;font-variant-numeric:tabular-nums}
@@ -161,6 +162,28 @@ a,button{pointer-events:auto}
   .big{font-size:54px}
 }
 .playing .help{opacity:.35;transition:opacity .4s}
+/* невысокие экраны (телефон в Telegram, ноутбук): финал плотнее, чтобы влезал без прокрутки */
+@media (max-height:760px){
+  .card{padding:16px 18px 14px}
+  .cardTop{margin-bottom:8px}
+  .big{font-size:46px;margin:2px 0}
+  .rank{font-size:15px;margin:6px 0 2px}
+  .best{margin-bottom:0}
+  .feedH{margin:10px 0 6px}
+  .feed{padding:9px;gap:5px;margin-bottom:12px}
+  .fb{font-size:12px;padding:5px 9px}
+  .b{padding:9px 16px}
+  .b.ic{width:40px}
+  .foot2{margin-top:12px;padding-top:10px}
+  .qr{width:60px}
+}
+@media (max-height:600px){
+  .over{padding:8px}
+  .card{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px)}
+  .big{font-size:40px}
+  .feedH{display:none}
+  .feed{margin-top:10px}
+}
 </style>
 </head>
 <body>
@@ -213,6 +236,7 @@ a,button{pointer-events:auto}
 
 <div class="over" id="over">
   <div class="card">
+    <div class="cardTop"><img src="logo-white.svg" alt="RGBY">мини-игра «Вытряхни правки»</div>
     <div class="lbl" id="rLbl">все правки на столе</div>
     <div class="big" id="rTime">0.0<small>с</small></div>
     <div class="rank" id="rRank"></div>
@@ -227,7 +251,8 @@ a,button{pointer-events:auto}
       </button>
     </div>
     <div class="foot2">
-      <div class="sig">Игру сделали в RGBY. Правки вносим быстро.<br>
+      <div class="sig">Сыграй: <a id="rUrl" href="#"></a><br>
+        Игру сделали в RGBY. Правки вносим быстро.<br>
         <a href="https://t.me/hellorgby" target="_blank" rel="noopener">@hellorgby</a> · 8 804 700 73 70</div>
       <div class="qr"><img src="qr-card.png" alt="QR: t.me/hellorgby"></div>
     </div>
@@ -271,6 +296,8 @@ function mood() {
   if (wd === 5) { n += 2; t = 'Пятница: клиент наконец открыл макет'; }
   if (evening) { n += 2; t = wd === 5 ? 'Пятница, 18:00. Классика' : 'Вечер: «глянете до утра?»'; }
   if (night) { n += 2; t = 'Ночь. «Вы же всё равно не спите?»'; }
+  const force = /[?&]debug\b/.test(location.search) && +new URLSearchParams(location.search).get('n');
+  if (force) n = force; // для проверки вёрстки на максимуме правок
   return { n, t };
 }
 
@@ -559,15 +586,18 @@ function finish() {
   const isBest = !(prev <= t);
   if (isBest) store.set(key, String(t));
   $('rLbl').textContent = 'все ' + n + ' ' + plural(n) + ' на столе';
-  $('rTime').innerHTML = t.toFixed(1) + '<small>с</small>';
   $('rRank').textContent = RANKS.find(r => t < r[0])[1];
+  // если при округлении до десятых времена совпадают, показываем сотые
+  const sec = (a, b) => (a.toFixed(1) === b.toFixed(1) ? a.toFixed(2) : a.toFixed(1));
+  $('rTime').innerHTML = sec(t, isNaN(prev) ? -1 : prev) + '<small>с</small>';
   $('rBest').innerHTML = isBest
-    ? (isNaN(prev) ? 'Первый результат при ' + n + ' ' + plural(n, true) : '<b>Новый рекорд!</b> Было ' + prev.toFixed(1) + ' с')
-    : 'Ваш рекорд при ' + n + ' ' + plural(n, true) + ': <b>' + prev.toFixed(1) + ' с</b>';
+    ? (isNaN(prev) ? 'Первый результат при ' + n + ' ' + plural(n, true) : '<b>Новый рекорд!</b> Было ' + sec(prev, t) + ' с')
+    : 'Ваш рекорд при ' + n + ' ' + plural(n, true) + ': <b>' + sec(prev, t) + ' с</b>';
   renderFeed();
+  const u = shareUrl(); $('rUrl').href = u; $('rUrl').textContent = u.replace(/^https?:\/\//, '').replace(/\/$/, '');
   shareBlob = null;
   makeCard().then(b => { shareBlob = b; }).catch(() => {});
-  setTimeout(() => { $('over').classList.add('on'); $('feed').scrollTop = 1e4; }, 700);
+  setTimeout(() => $('over').classList.add('on'), 700);
 }
 
 // лента «что сегодня прислал клиент»
@@ -582,7 +612,6 @@ function renderFeed() {
       d.className = 'fb' + (m.color === C.lime ? ' l' : '');
       d.textContent = m.text;
     }
-    const t = document.createElement('time'); t.textContent = m.stamp; d.append(t);
     feed.append(d);
   }
   const typing = document.createElement('div'); typing.className = 'typing';
